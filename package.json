@@ -1,0 +1,27 @@
+{
+  "name": "jobs-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "oxlint --deny-warnings apps",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:integration": "pnpm --filter @jobs/api test:integration",
+    "db:generate": "pnpm --filter @jobs/api db:generate",
+    "db:migrate": "pnpm --filter @jobs/api db:migrate"
+  },
+  "devDependencies": {
+    "oxfmt": "0.77.0",
+    "oxlint": "1.92.0",
+    "turbo": "2.11.10"
+  },
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "packageManager": "pnpm@12.18.0"
+}

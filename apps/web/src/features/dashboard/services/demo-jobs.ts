@@ -1,0 +1,40 @@
+import type { DemoJob } from "../types/dashboard";
+// Illustrative, fictional companies. Scores are examples, not an AI analysis.
+export const demoJobs: DemoJob[] = [
+  {
+    id: "demo-1",
+    title: "Senior Frontend Developer",
+    company: "Órbita Studio",
+    monogram: "ó",
+    color: "violet",
+    location: "Latinoamérica",
+    modality: "Remoto",
+    technologies: ["React", "TypeScript", "Next.js"],
+    compatibility: 96,
+    salary: "USD 3.000 – 4.500",
+  },
+  {
+    id: "demo-2",
+    title: "Full Stack Engineer",
+    company: "Forma Digital",
+    monogram: "f",
+    color: "orange",
+    location: "Santiago, Chile",
+    modality: "Híbrido",
+    technologies: ["Node.js", "React", "PostgreSQL"],
+    compatibility: 89,
+    salary: "USD 2.500 – 3.800",
+  },
+  {
+    id: "demo-3",
+    title: "React Developer",
+    company: "Marea Labs",
+    monogram: "m",
+    color: "blue",
+    location: "Latinoamérica",
+    modality: "Remoto",
+    technologies: ["React", "JavaScript", "Tailwind"],
+    compatibility: 85,
+    salary: "USD 2.000 – 3.000",
+  },
+];

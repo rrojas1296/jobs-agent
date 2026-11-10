@@ -1,0 +1,13 @@
+{
+  "printWidth": 100,
+  "tabWidth": 2,
+  "semi": true,
+  "singleQuote": false,
+  "ignorePatterns": [
+    "**/dist/**",
+    "**/.next/**",
+    "**/.next-production/**",
+    "pnpm-lock.yaml",
+    "**/drizzle/meta/**"
+  ]
+}

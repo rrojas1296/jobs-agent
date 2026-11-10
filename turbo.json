@@ -1,0 +1,19 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "tasks": {
+    "dev": { "cache": false, "persistent": true },
+    "build": {
+      "outputs": [
+        "dist/**",
+        ".next/**",
+        "!.next/cache/**",
+        ".next-production/**",
+        "!.next-production/cache/**"
+      ],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "env": ["NODE_ENV", "API_URL", "NEXT_PUBLIC_API_URL", "NEXT_DIST_DIR"]
+    },
+    "typecheck": { "outputs": [] },
+    "test": { "outputs": [], "cache": false }
+  }
+}

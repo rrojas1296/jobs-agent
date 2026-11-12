@@ -1,8 +1,8 @@
 # Nexo · plataforma de empleo
 
-Primera fase funcional: infraestructura, autenticación real, onboarding persistente y dashboard. Interfaz en español, responsive y con temas claro, oscuro y sistema. El diseño sigue la referencia suministrada: marco gris frío, sidebar y paneles blancos redondeados, bordes discretos y acento violeta.
+Primera fase funcional: infraestructura, autenticación real, onboarding persistente, dashboard e importación de CV con LaTeX. Interfaz en español, responsive y con temas claro, oscuro y sistema. El diseño sigue la referencia suministrada: marco gris frío, sidebar y paneles blancos redondeados, bordes discretos y acento violeta.
 
-**No se conectan portales de empleo ni servicios de IA.** Las ofertas están identificadas como demostración; estadísticas reales en cero y actividad vacía. No se crean estadísticas, postulaciones ni actividad ficticia en PostgreSQL.
+**No se conectan portales de empleo ni servicios de IA.** Las ofertas están identificadas como demostración; estadísticas de empleo en cero, contador real de CV y actividad vacía. No se crean estadísticas, postulaciones ni actividad ficticia en PostgreSQL.
 
 ## Requisitos
 
@@ -24,6 +24,7 @@ cp .env.example .env
 pnpm install
 docker compose -f compose.dev.yaml up -d --wait
 pnpm db:migrate
+docker build -t nexo-resumes:1 infra/resumes
 pnpm dev
 ```
 
@@ -177,7 +178,7 @@ POST  /onboarding/complete
 GET   /dashboard
 ```
 
-`/onboarding/links` permite guardar separadamente los enlaces opcionales sin sobrescribir la información profesional. `complete` valida los datos requeridos persistidos antes de habilitar el dashboard. Las secciones Explorar empleos, Mis postulaciones, Mis CV, Ofertas guardadas y Configuración tienen rutas funcionales; las funcionalidades futuras muestran estados vacíos explícitos (Configuración muestra el perfil actual, tema y logout).
+`/onboarding/links` permite guardar separadamente los enlaces opcionales sin sobrescribir la información profesional. `complete` valida los datos requeridos persistidos antes de habilitar el dashboard. Mis CV permite importar y gestionar documentos. Las secciones Explorar empleos, Mis postulaciones, Ofertas guardadas y Configuración tienen rutas funcionales; las funcionalidades futuras muestran estados vacíos explícitos (Configuración muestra el perfil actual, tema y logout).
 
 ## Verificación
 
@@ -192,4 +193,42 @@ Además se verificó manualmente en navegador: registro → cuatro pasos → rec
 - [Tailwind CSS con Next](https://tailwindcss.com/docs/installation/framework-guides/nextjs), [shadcn/ui](https://ui.shadcn.com/docs/installation/next).
 - [jose](https://github.com/panva/jose), [Turborepo](https://turborepo.com/docs), [pnpm workspaces](https://pnpm.io/workspaces), [oxlint](https://oxc.rs/docs/guide/usage/linter) y [oxfmt](https://oxc.rs/docs/guide/usage/formatter).
 
-Las dependencias están fijadas y `pnpm-lock.yaml` versiona la resolución completa. No se incluyen OAuth, scraping, colas, Redis, motores de IA, generación de CV ni conexión a portales: pertenecen a fases posteriores.
+Las dependencias están fijadas y `pnpm-lock.yaml` versiona la resolución completa. No se incluyen OAuth, scraping, colas, Redis, motores de IA, generación de contenido con IA ni conexión a portales: pertenecen a fases posteriores.
+
+## Importar y gestionar CV
+
+En **Mis CV** puedes importar PDF con texto y DOCX de hasta **5 MB**, revisar el contenido, guardar revisiones y generar un PDF desde LaTeX. No se utiliza IA ni se envían documentos a proveedores externos. El texto extraído aparece íntegro en «Información adicional» para distribuirlo manualmente entre las secciones. No se replica la maquetación original; los escaneos requieren OCR y todavía no están soportados.
+
+Antes de importar, construye la imagen local de procesamiento (una vez y cuando cambie `infra/resumes`):
+
+```bash
+docker build -t nexo-resumes:1 infra/resumes
+pnpm db:migrate
+```
+
+La API necesita el cliente Docker y acceso a un daemon **local**. No se necesita instalar LaTeX ni Poppler en el host. Si la API se ejecuta en contenedores o en otro host, hay que preparar un worker con acceso al mismo sistema de archivos antes de usar este flujo; no basta con apuntar a un daemon remoto.
+
+El procesamiento arranca contenedores efímeros sin red, como usuario sin privilegios, con raíz de solo lectura, directorio temporal limitado, sin capacidades y con límites de CPU, memoria, procesos, tamaño de archivo y tiempo (45 segundos por operación). LaTeX se genera únicamente desde texto escapado con la plantilla `nexo-classic-v1`; no se admiten fuentes `.tex` arbitrarias. El compilador usa `-no-shell-escape`. Se permiten como máximo dos operaciones de extracción/compilación simultáneas por instancia; cuando no hay capacidad, se puede reintentar.
+
+Para esta fase, **originales y PDF se almacenan como binarios privados en PostgreSQL**, junto con los datos estructurados y el código LaTeX de cada revisión. Esto mantiene la creación y eliminación transaccionales, sin archivos huérfanos ni rutas públicas. Las copias de seguridad de PostgreSQL contienen también estos documentos personales. Los temporales del procesamiento se eliminan al finalizar. Al eliminar un CV o usuario se eliminan sus documentos y revisiones en cascada.
+
+Cada guardado crea una revisión inmutable del contenido y su fuente `.tex`; la compilación actualiza solamente el estado y PDF de esa revisión. Puedes consultar versiones anteriores, crear una nueva a partir de ellas y descargar original, LaTeX o PDF. Descargar una revisión no incluye cambios sin guardar. La importación no modifica el perfil profesional. El dashboard cuenta los CV reales del usuario.
+
+La compilación se ejecuta durante la solicitud HTTP, con estado persistido y consulta periódica desde la interfaz. Si el compilador falla se conserva LaTeX y contenido, y se permite reintentar. **Esta versión requiere una única instancia de API**: al arrancar, las compilaciones interrumpidas se marcan como error recuperable. Antes de usar varias réplicas se debe introducir una cola duradera y leases por trabajo; no ejecutar varias APIs de esta versión sobre la misma base durante compilaciones activas. Configura un timeout del proxy superior a 60 segundos para estas operaciones.
+
+Endpoints autenticados (las mutaciones mantienen protección CSRF):
+
+```http
+GET    /resumes
+POST   /resumes/import                         # multipart/form-data, campo file
+GET    /resumes/:id
+PATCH  /resumes/:id                            # { name }
+DELETE /resumes/:id
+POST   /resumes/:id/revisions                  # contenido revisado por secciones
+POST   /resumes/:id/revisions/:revisionId/compile
+GET    /resumes/:id/download/original
+GET    /resumes/:id/download/tex?revision=<uuid>
+GET    /resumes/:id/download/pdf?revision=<uuid>
+```
+
+`pnpm test:integration` requiere también la imagen `nexo-resumes:1`; comprueba extracción DOCX/PDF, aislamiento entre usuarios, validación de archivos, historial, compilación real con caracteres especiales, fallo/reintento y eliminación en cascada. Crea sus propios usuarios y los elimina al finalizar.

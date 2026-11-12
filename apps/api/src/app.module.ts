@@ -8,6 +8,7 @@ import { AuthModule } from "./modules/auth/auth.module";
 import { CsrfGuard } from "./common/csrf.guard";
 import { OnboardingModule } from "./modules/onboarding/onboarding.module";
 import { DashboardModule } from "./modules/dashboard/dashboard.module";
+import { ResumesModule } from "./modules/resumes/resumes.module";
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }),
@@ -16,6 +17,7 @@ import { DashboardModule } from "./modules/dashboard/dashboard.module";
     AuthModule,
     OnboardingModule,
     DashboardModule,
+    ResumesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: CsrfGuard },
